@@ -3,6 +3,13 @@ package com.nuvio.app.features.home
 import com.nuvio.app.features.addons.ManagedAddon
 import com.nuvio.app.features.catalog.CatalogTarget
 import com.nuvio.app.features.details.MetaExternalRating
+import com.nuvio.app.features.watchprogress.ContinueWatchingItem
+import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
+import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesUiState
+import com.nuvio.app.features.watchprogress.ContinueWatchingPriority
+import com.nuvio.app.features.watchprogress.isSeriesContinueWatchingItem
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 data class MetaPreview(
     val id: String,
@@ -57,6 +64,70 @@ data class HomeUiState(
     val sections: List<HomeCatalogSection> = emptyList(),
     val errorMessage: String? = null,
 )
+
+enum class ContinueWatchingMediaCategory {
+    SERIES,
+    MOVIES,
+}
+
+data class ContinueWatchingRail(
+    val category: ContinueWatchingMediaCategory,
+    val items: List<ContinueWatchingItem>,
+)
+
+sealed interface ContinueWatchingUiState {
+    data class Combined(
+        val items: List<ContinueWatchingItem>,
+    ) : ContinueWatchingUiState
+
+    data class Separate(
+        val priority: ContinueWatchingPriority,
+        val seriesItems: List<ContinueWatchingItem>,
+        val movieItems: List<ContinueWatchingItem>,
+    ) : ContinueWatchingUiState {
+        val orderedRails: List<ContinueWatchingRail>
+            get() = when (priority) {
+                ContinueWatchingPriority.SERIES_FIRST -> listOf(
+                    ContinueWatchingRail(ContinueWatchingMediaCategory.SERIES, seriesItems),
+                    ContinueWatchingRail(ContinueWatchingMediaCategory.MOVIES, movieItems),
+                )
+                ContinueWatchingPriority.MOVIES_FIRST -> listOf(
+                    ContinueWatchingRail(ContinueWatchingMediaCategory.MOVIES, movieItems),
+                    ContinueWatchingRail(ContinueWatchingMediaCategory.SERIES, seriesItems),
+                )
+            }.filter { it.items.isNotEmpty() }
+    }
+}
+
+internal fun buildContinueWatchingUiState(
+    items: List<ContinueWatchingItem>,
+    isContinueWatchingSplit: Boolean,
+    continueWatchingPriority: ContinueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
+): ContinueWatchingUiState {
+    if (!isContinueWatchingSplit) {
+        return ContinueWatchingUiState.Combined(items = items)
+    }
+    val (seriesItems, movieItems) = items.partition(ContinueWatchingItem::isSeriesContinueWatchingItem)
+    return ContinueWatchingUiState.Separate(
+        priority = continueWatchingPriority,
+        seriesItems = seriesItems,
+        movieItems = movieItems,
+    )
+}
+
+internal fun observeContinueWatchingUiState(
+    watchHistoryFlow: Flow<List<ContinueWatchingItem>>,
+    preferencesFlow: Flow<ContinueWatchingPreferencesUiState> = ContinueWatchingPreferencesRepository.uiState,
+): Flow<ContinueWatchingUiState> = combine(
+    watchHistoryFlow,
+    preferencesFlow,
+) { items, preferences ->
+    buildContinueWatchingUiState(
+        items = items,
+        isContinueWatchingSplit = preferences.isContinueWatchingSplit,
+        continueWatchingPriority = preferences.continueWatchingPriority,
+    )
+}
 
 internal fun shouldShowInitialHomeLoading(
     hasRenderableHomeRows: Boolean,

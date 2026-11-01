@@ -149,11 +149,21 @@ fun HomeScreen(
     }.collectAsStateWithLifecycle()
     val homeListState = rememberLazyListState()
     val continueWatchingListState = rememberLazyListState()
+    val continueWatchingSeriesListState = rememberLazyListState()
+    val continueWatchingMoviesListState = rememberLazyListState()
     val upcomingListState = rememberLazyListState()
-    ScreenActivityEffect(homeListState, continueWatchingListState, upcomingListState) { active ->
+    ScreenActivityEffect(
+        homeListState,
+        continueWatchingListState,
+        continueWatchingSeriesListState,
+        continueWatchingMoviesListState,
+        upcomingListState,
+    ) { active ->
         if (!active) {
             homeListState.stopScroll(MutatePriority.PreventUserInput)
             continueWatchingListState.stopScroll(MutatePriority.PreventUserInput)
+            continueWatchingSeriesListState.stopScroll(MutatePriority.PreventUserInput)
+            continueWatchingMoviesListState.stopScroll(MutatePriority.PreventUserInput)
             upcomingListState.stopScroll(MutatePriority.PreventUserInput)
         }
     }
@@ -320,11 +330,25 @@ fun HomeScreen(
     val activeProfileId = profileState.activeProfile?.profileIndex ?: 1
     val cwCacheGeneration by ContinueWatchingEnrichmentCache.generation.collectAsStateWithLifecycle()
     var hasUserScrolledContinueWatching by remember(activeProfileId) { mutableStateOf(false) }
+    var hasUserScrolledContinueWatchingSeries by remember(activeProfileId) { mutableStateOf(false) }
+    var hasUserScrolledContinueWatchingMovies by remember(activeProfileId) { mutableStateOf(false) }
     var hasUserScrolledUpcoming by remember(activeProfileId) { mutableStateOf(false) }
 
     LaunchedEffect(activeProfileId, continueWatchingListState) {
         snapshotFlow { continueWatchingListState.isScrollInProgress }.collect { isScrolling ->
             if (isScrolling) hasUserScrolledContinueWatching = true
+        }
+    }
+
+    LaunchedEffect(activeProfileId, continueWatchingSeriesListState) {
+        snapshotFlow { continueWatchingSeriesListState.isScrollInProgress }.collect { isScrolling ->
+            if (isScrolling) hasUserScrolledContinueWatchingSeries = true
+        }
+    }
+
+    LaunchedEffect(activeProfileId, continueWatchingMoviesListState) {
+        snapshotFlow { continueWatchingMoviesListState.isScrollInProgress }.collect { isScrolling ->
+            if (isScrolling) hasUserScrolledContinueWatchingMovies = true
         }
     }
 
@@ -547,6 +571,17 @@ fun HomeScreen(
         )
     }
     val hasContinueWatchingRows = continueWatchingItems.isNotEmpty() || upcomingItems.isNotEmpty()
+    val continueWatchingUiState = remember(
+        continueWatchingItems,
+        continueWatchingPreferences.isContinueWatchingSplit,
+        continueWatchingPreferences.continueWatchingPriority,
+    ) {
+        buildContinueWatchingUiState(
+            items = continueWatchingItems,
+            isContinueWatchingSplit = continueWatchingPreferences.isContinueWatchingSplit,
+            continueWatchingPriority = continueWatchingPreferences.continueWatchingPriority,
+        )
+    }
 
     ScreenActivityEffect(activeProfileId, continueWatchingItems.isNotEmpty(), hasUserScrolledContinueWatching) { active ->
         if (!active) return@ScreenActivityEffect
@@ -561,6 +596,40 @@ fun HomeScreen(
                     (index != 0 || offset != 0)
                 ) {
                     continueWatchingListState.scrollToItem(0)
+                }
+            }
+        }
+    }
+    ScreenActivityEffect(activeProfileId, continueWatchingItems.isNotEmpty(), hasUserScrolledContinueWatchingSeries) { active ->
+        if (!active) return@ScreenActivityEffect
+        if (!hasUserScrolledContinueWatchingSeries && continueWatchingItems.isNotEmpty()) {
+            snapshotFlow {
+                continueWatchingSeriesListState.firstVisibleItemIndex to
+                    continueWatchingSeriesListState.firstVisibleItemScrollOffset
+            }.collect { (index, offset) ->
+                if (
+                    !hasUserScrolledContinueWatchingSeries &&
+                    !continueWatchingSeriesListState.isScrollInProgress &&
+                    (index != 0 || offset != 0)
+                ) {
+                    continueWatchingSeriesListState.scrollToItem(0)
+                }
+            }
+        }
+    }
+    ScreenActivityEffect(activeProfileId, continueWatchingItems.isNotEmpty(), hasUserScrolledContinueWatchingMovies) { active ->
+        if (!active) return@ScreenActivityEffect
+        if (!hasUserScrolledContinueWatchingMovies && continueWatchingItems.isNotEmpty()) {
+            snapshotFlow {
+                continueWatchingMoviesListState.firstVisibleItemIndex to
+                    continueWatchingMoviesListState.firstVisibleItemScrollOffset
+            }.collect { (index, offset) ->
+                if (
+                    !hasUserScrolledContinueWatchingMovies &&
+                    !continueWatchingMoviesListState.isScrollInProgress &&
+                    (index != 0 || offset != 0)
+                ) {
+                    continueWatchingMoviesListState.scrollToItem(0)
                 }
             }
         }
@@ -1035,11 +1104,14 @@ fun HomeScreen(
                     homeContinueWatchingSections(
                         preferences = continueWatchingPreferences,
                         continueWatchingItems = continueWatchingItems,
+                        continueWatchingUiState = continueWatchingUiState,
                         upcomingItems = upcomingItems,
                         dataSourceKey = effectiveWatchProgressSource,
                         sectionPadding = homeSectionPadding,
                         layout = continueWatchingLayout,
                         continueWatchingListState = continueWatchingListState,
+                        continueWatchingSeriesListState = continueWatchingSeriesListState,
+                        continueWatchingMoviesListState = continueWatchingMoviesListState,
                         upcomingListState = upcomingListState,
                         onItemClick = onContinueWatchingClick,
                         onItemLongPress = onContinueWatchingLongPress,
@@ -1060,11 +1132,14 @@ fun HomeScreen(
                     homeContinueWatchingSections(
                         preferences = continueWatchingPreferences,
                         continueWatchingItems = continueWatchingItems,
+                        continueWatchingUiState = continueWatchingUiState,
                         upcomingItems = upcomingItems,
                         dataSourceKey = effectiveWatchProgressSource,
                         sectionPadding = homeSectionPadding,
                         layout = continueWatchingLayout,
                         continueWatchingListState = continueWatchingListState,
+                        continueWatchingSeriesListState = continueWatchingSeriesListState,
+                        continueWatchingMoviesListState = continueWatchingMoviesListState,
                         upcomingListState = upcomingListState,
                         onItemClick = onContinueWatchingClick,
                         onItemLongPress = onContinueWatchingLongPress,
@@ -1151,11 +1226,14 @@ fun HomeScreen(
                     homeContinueWatchingSections(
                         preferences = continueWatchingPreferences,
                         continueWatchingItems = continueWatchingItems,
+                        continueWatchingUiState = continueWatchingUiState,
                         upcomingItems = upcomingItems,
                         dataSourceKey = effectiveWatchProgressSource,
                         sectionPadding = homeSectionPadding,
                         layout = continueWatchingLayout,
                         continueWatchingListState = continueWatchingListState,
+                        continueWatchingSeriesListState = continueWatchingSeriesListState,
+                        continueWatchingMoviesListState = continueWatchingMoviesListState,
                         upcomingListState = upcomingListState,
                         onItemClick = onContinueWatchingClick,
                         onItemLongPress = onContinueWatchingLongPress,
@@ -1209,11 +1287,18 @@ fun HomeScreen(
 private fun LazyListScope.homeContinueWatchingSections(
     preferences: ContinueWatchingPreferencesUiState,
     continueWatchingItems: List<ContinueWatchingItem>,
+    continueWatchingUiState: ContinueWatchingUiState = buildContinueWatchingUiState(
+        items = continueWatchingItems,
+        isContinueWatchingSplit = preferences.isContinueWatchingSplit,
+        continueWatchingPriority = preferences.continueWatchingPriority,
+    ),
     upcomingItems: List<ContinueWatchingItem>,
     dataSourceKey: WatchProgressSource,
     sectionPadding: Dp,
     layout: ContinueWatchingLayout,
     continueWatchingListState: LazyListState,
+    continueWatchingSeriesListState: LazyListState = continueWatchingListState,
+    continueWatchingMoviesListState: LazyListState = continueWatchingListState,
     upcomingListState: LazyListState,
     onItemClick: ((ContinueWatchingItem) -> Unit)?,
     onItemLongPress: ((ContinueWatchingItem) -> Unit)?,
@@ -1221,22 +1306,58 @@ private fun LazyListScope.homeContinueWatchingSections(
 ) {
     if (!preferences.isVisible) return
 
-    if (continueWatchingItems.isNotEmpty()) {
-        item(key = HOME_CONTINUE_WATCHING_SECTION_KEY, contentType = "continue_watching") {
-            HomeContinueWatchingSection(
-                items = continueWatchingItems,
-                dataSourceKey = dataSourceKey,
-                style = preferences.style,
-                useEpisodeThumbnails = preferences.useEpisodeThumbnails,
-                blurNextUp = preferences.blurNextUp,
-                modifier = Modifier.padding(bottom = HomeContinueWatchingSectionBottomPadding),
-                sectionPadding = sectionPadding,
-                layout = layout,
-                listState = continueWatchingListState,
-                onItemClick = onItemClick,
-                onItemLongPress = onItemLongPress,
-                disintegrationRequest = disintegrationRequest,
-            )
+    when (continueWatchingUiState) {
+        is ContinueWatchingUiState.Combined -> if (continueWatchingUiState.items.isNotEmpty()) {
+            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY, contentType = "continue_watching") {
+                HomeContinueWatchingSection(
+                    items = continueWatchingUiState.items,
+                    dataSourceKey = dataSourceKey,
+                    style = preferences.style,
+                    useEpisodeThumbnails = preferences.useEpisodeThumbnails,
+                    blurNextUp = preferences.blurNextUp,
+                    modifier = Modifier.padding(bottom = HomeContinueWatchingSectionBottomPadding),
+                    sectionPadding = sectionPadding,
+                    layout = layout,
+                    listState = continueWatchingListState,
+                    onItemClick = onItemClick,
+                    onItemLongPress = onItemLongPress,
+                    disintegrationRequest = disintegrationRequest,
+                )
+            }
+        }
+
+        is ContinueWatchingUiState.Separate -> {
+            continueWatchingUiState.orderedRails.forEach { rail ->
+                val sectionKey = when (rail.category) {
+                    ContinueWatchingMediaCategory.SERIES -> HOME_CONTINUE_WATCHING_SERIES_SECTION_KEY
+                    ContinueWatchingMediaCategory.MOVIES -> HOME_CONTINUE_WATCHING_MOVIES_SECTION_KEY
+                }
+                val railListState = when (rail.category) {
+                    ContinueWatchingMediaCategory.SERIES -> continueWatchingSeriesListState
+                    ContinueWatchingMediaCategory.MOVIES -> continueWatchingMoviesListState
+                }
+                item(key = sectionKey, contentType = "continue_watching") {
+                    val railTitle = when (rail.category) {
+                        ContinueWatchingMediaCategory.SERIES -> stringResource(Res.string.home_continue_watching_series_title)
+                        ContinueWatchingMediaCategory.MOVIES -> stringResource(Res.string.home_continue_watching_movies_title)
+                    }
+                    HomeContinueWatchingSection(
+                        items = rail.items,
+                        dataSourceKey = dataSourceKey,
+                        style = preferences.style,
+                        useEpisodeThumbnails = preferences.useEpisodeThumbnails,
+                        blurNextUp = preferences.blurNextUp,
+                        modifier = Modifier.padding(bottom = HomeContinueWatchingSectionBottomPadding),
+                        title = railTitle,
+                        sectionPadding = sectionPadding,
+                        layout = layout,
+                        listState = railListState,
+                        onItemClick = onItemClick,
+                        onItemLongPress = onItemLongPress,
+                        disintegrationRequest = disintegrationRequest,
+                    )
+                }
+            }
         }
     }
 
@@ -1263,6 +1384,8 @@ private fun LazyListScope.homeContinueWatchingSections(
 
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
 private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"
+private const val HOME_CONTINUE_WATCHING_SERIES_SECTION_KEY = "home_continue_watching_series"
+private const val HOME_CONTINUE_WATCHING_MOVIES_SECTION_KEY = "home_continue_watching_movies"
 private const val HOME_UPCOMING_SECTION_KEY = "home_upcoming"
 internal const val HomeContinueWatchingMaxRecentProgressItems = 300
 internal const val HomeNextUpInitialResolutionLimit = 32
