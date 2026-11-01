@@ -24,6 +24,10 @@ private data class StoredContinueWatchingPreferences(
     val showResumePromptOnLaunch: Boolean = true,
     @SerialName("sort_mode")
     val sortMode: ContinueWatchingSortMode = ContinueWatchingSortMode.DEFAULT,
+    @SerialName("is_continue_watching_split")
+    val isContinueWatchingSplit: Boolean = false,
+    @SerialName("continue_watching_priority")
+    val continueWatchingPriority: ContinueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
 )
 
 object ContinueWatchingPreferencesRepository {
@@ -59,6 +63,8 @@ object ContinueWatchingPreferencesRepository {
         showUnairedNextUp: Boolean = true,
         blurNextUp: Boolean = false,
         dismissedNextUpKeys: Set<String>,
+        isContinueWatchingSplit: Boolean = _uiState.value.isContinueWatchingSplit,
+        continueWatchingPriority: ContinueWatchingPriority = _uiState.value.continueWatchingPriority,
     ) {
         ensureLoaded()
         _uiState.value = _uiState.value.copy(
@@ -72,6 +78,8 @@ object ContinueWatchingPreferencesRepository {
                 .map(String::trim)
                 .filter(String::isNotBlank)
                 .toSet(),
+            isContinueWatchingSplit = isContinueWatchingSplit,
+            continueWatchingPriority = continueWatchingPriority,
         )
         persist()
     }
@@ -100,6 +108,8 @@ object ContinueWatchingPreferencesRepository {
                 dismissedNextUpKeys = stored.dismissedNextUpKeys,
                 showResumePromptOnLaunch = stored.showResumePromptOnLaunch,
                 sortMode = stored.sortMode,
+                isContinueWatchingSplit = stored.isContinueWatchingSplit,
+                continueWatchingPriority = stored.continueWatchingPriority,
             )
         } else {
             ContinueWatchingPreferencesUiState()
@@ -165,6 +175,20 @@ object ContinueWatchingPreferencesRepository {
         persist()
     }
 
+    fun setContinueWatchingSplit(enabled: Boolean) {
+        ensureLoaded()
+        if (_uiState.value.isContinueWatchingSplit == enabled) return
+        _uiState.value = _uiState.value.copy(isContinueWatchingSplit = enabled)
+        persist()
+    }
+
+    fun setContinueWatchingPriority(priority: ContinueWatchingPriority) {
+        ensureLoaded()
+        if (_uiState.value.continueWatchingPriority == priority) return
+        _uiState.value = _uiState.value.copy(continueWatchingPriority = priority)
+        persist()
+    }
+
     fun removeDismissedNextUpKeysForContent(contentId: String) {
         ensureLoaded()
         val normalizedContentId = contentId.trim()
@@ -191,6 +215,8 @@ object ContinueWatchingPreferencesRepository {
                     dismissedNextUpKeys = _uiState.value.dismissedNextUpKeys,
                     showResumePromptOnLaunch = _uiState.value.showResumePromptOnLaunch,
                     sortMode = _uiState.value.sortMode,
+                    isContinueWatchingSplit = _uiState.value.isContinueWatchingSplit,
+                    continueWatchingPriority = _uiState.value.continueWatchingPriority,
                 ),
             ),
         )

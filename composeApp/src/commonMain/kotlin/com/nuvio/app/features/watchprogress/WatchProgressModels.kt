@@ -32,6 +32,12 @@ enum class ContinueWatchingSortMode {
 }
 
 @Serializable
+enum class ContinueWatchingPriority {
+    SERIES_FIRST,
+    MOVIES_FIRST,
+}
+
+@Serializable
 data class WatchProgressEntry(
     val contentType: String,
     val parentMetaId: String,
@@ -234,6 +240,11 @@ internal fun continueWatchingItemKey(item: ContinueWatchingItem): String {
     return "${item.parentMetaId}:$season:$episode"
 }
 
+internal fun ContinueWatchingItem.isSeriesContinueWatchingItem(): Boolean =
+    parentMetaType.isSeriesTypeForContinueWatching() ||
+        isNextUp ||
+        (seasonNumber != null && episodeNumber != null)
+
 data class ContinueWatchingPreferencesUiState(
     val isVisible: Boolean = true,
     val style: ContinueWatchingSectionStyle = ContinueWatchingSectionStyle.Card,
@@ -244,6 +255,8 @@ data class ContinueWatchingPreferencesUiState(
     val dismissedNextUpKeys: Set<String> = emptySet(),
     val showResumePromptOnLaunch: Boolean = true,
     val sortMode: ContinueWatchingSortMode = ContinueWatchingSortMode.DEFAULT,
+    val isContinueWatchingSplit: Boolean = false,
+    val continueWatchingPriority: ContinueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
 )
 
 internal fun nextUpDismissKey(
