@@ -732,6 +732,7 @@ internal fun settingsSearchEntries(
         section = stringResource(Res.string.settings_continue_watching_section_on_launch),
         rows = listOf(
             PlaybackSearchRow("resume-prompt", stringResource(Res.string.settings_continue_watching_resume_prompt_title), stringResource(Res.string.settings_continue_watching_resume_prompt_description)),
+            PlaybackSearchRow("split-continue-watching", stringResource(Res.string.settings_continue_watching_split_title), stringResource(Res.string.settings_continue_watching_split_description)),
         ),
     )
 

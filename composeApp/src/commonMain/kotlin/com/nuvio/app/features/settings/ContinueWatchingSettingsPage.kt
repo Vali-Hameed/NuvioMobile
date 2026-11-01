@@ -1,5 +1,8 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,12 +13,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,13 +33,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.DialogOption
 import com.nuvio.app.core.ui.DialogSurface
+import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.home.components.ContinueWatchingStylePreview
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
+import com.nuvio.app.features.watchprogress.ContinueWatchingPriority
 import com.nuvio.app.features.watchprogress.ContinueWatchingSectionStyle
 import com.nuvio.app.features.watchprogress.ContinueWatchingSortMode
 import nuvio.composeapp.generated.resources.Res
@@ -40,6 +50,9 @@ import nuvio.composeapp.generated.resources.settings_continue_watching_resume_pr
 import nuvio.composeapp.generated.resources.settings_continue_watching_resume_prompt_title
 import nuvio.composeapp.generated.resources.settings_continue_watching_blur_next_up_description
 import nuvio.composeapp.generated.resources.settings_continue_watching_blur_next_up_title
+import nuvio.composeapp.generated.resources.settings_continue_watching_priority_movies_first
+import nuvio.composeapp.generated.resources.settings_continue_watching_priority_series_first
+import nuvio.composeapp.generated.resources.settings_continue_watching_priority_title
 import nuvio.composeapp.generated.resources.settings_continue_watching_show_unaired_next_up_description
 import nuvio.composeapp.generated.resources.settings_continue_watching_show_unaired_next_up_title
 import nuvio.composeapp.generated.resources.settings_continue_watching_section_card_style
@@ -56,6 +69,8 @@ import nuvio.composeapp.generated.resources.settings_continue_watching_sort_mode
 import nuvio.composeapp.generated.resources.settings_continue_watching_sort_mode_split_upcoming
 import nuvio.composeapp.generated.resources.settings_continue_watching_sort_mode_split_upcoming_desc
 import nuvio.composeapp.generated.resources.settings_continue_watching_sort_mode_title
+import nuvio.composeapp.generated.resources.settings_continue_watching_split_description
+import nuvio.composeapp.generated.resources.settings_continue_watching_split_title
 import nuvio.composeapp.generated.resources.settings_continue_watching_style_card
 import nuvio.composeapp.generated.resources.settings_continue_watching_style_card_description
 import nuvio.composeapp.generated.resources.settings_continue_watching_style_poster
@@ -79,6 +94,8 @@ internal fun LazyListScope.continueWatchingSettingsContent(
     blurNextUp: Boolean,
     showResumePromptOnLaunch: Boolean,
     sortMode: ContinueWatchingSortMode,
+    isContinueWatchingSplit: Boolean = false,
+    continueWatchingPriority: ContinueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
 ) {
     item {
         SettingsSection(
@@ -188,6 +205,14 @@ internal fun LazyListScope.continueWatchingSettingsContent(
                     isTablet = isTablet,
                     onClick = { showSortModeSheet = true },
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                ContinueWatchingSplitSettingsContent(
+                    isTablet = isTablet,
+                    isSplit = isContinueWatchingSplit,
+                    priority = continueWatchingPriority,
+                    onSplitChanged = ContinueWatchingPreferencesRepository::setContinueWatchingSplit,
+                    onPrioritySelected = ContinueWatchingPreferencesRepository::setContinueWatchingPriority,
+                )
             }
         }
 
@@ -203,6 +228,90 @@ internal fun LazyListScope.continueWatchingSettingsContent(
         }
     }
 }
+
+@Composable
+internal fun ContinueWatchingSplitSettingsContent(
+    isTablet: Boolean,
+    isSplit: Boolean,
+    priority: ContinueWatchingPriority,
+    onSplitChanged: (Boolean) -> Unit,
+    onPrioritySelected: (ContinueWatchingPriority) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val horizontalPadding = if (isTablet) 20.dp else 16.dp
+
+    SettingsSwitchRow(
+        title = stringResource(Res.string.settings_continue_watching_split_title),
+        description = stringResource(Res.string.settings_continue_watching_split_description),
+        checked = isSplit,
+        isTablet = isTablet,
+        onCheckedChange = onSplitChanged,
+    )
+
+    AnimatedVisibility(
+        visible = isSplit,
+        enter = expandVertically(),
+        exit = shrinkVertically(),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            SettingsGroupDivider(isTablet = isTablet)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = horizontalPadding,
+                        vertical = if (isTablet) 14.dp else 12.dp,
+                    )
+                    .selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_continue_watching_priority_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.colors.textMuted,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                ContinueWatchingPriority.entries.forEach { option ->
+                    val selected = option == priority
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = selected,
+                                role = Role.RadioButton,
+                                onClick = { onPrioritySelected(option) },
+                            )
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = null,
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = tokens.colors.accent,
+                                unselectedColor = tokens.colors.textMuted,
+                            ),
+                        )
+                        Text(
+                            text = stringResource(option.labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = tokens.colors.textPrimary,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val ContinueWatchingPriority.labelRes: StringResource
+    get() = when (this) {
+        ContinueWatchingPriority.SERIES_FIRST -> Res.string.settings_continue_watching_priority_series_first
+        ContinueWatchingPriority.MOVIES_FIRST -> Res.string.settings_continue_watching_priority_movies_first
+    }
 
 @Composable
 private fun ContinueWatchingStyleSelector(

@@ -136,6 +136,8 @@ fun ContinueWatchingSettingsScreen(
             blurNextUp = continueWatchingPreferencesUiState.blurNextUp,
             showResumePromptOnLaunch = continueWatchingPreferencesUiState.showResumePromptOnLaunch,
             sortMode = continueWatchingPreferencesUiState.sortMode,
+            isContinueWatchingSplit = continueWatchingPreferencesUiState.isContinueWatchingSplit,
+            continueWatchingPriority = continueWatchingPreferencesUiState.continueWatchingPriority,
         )
     }
 }
