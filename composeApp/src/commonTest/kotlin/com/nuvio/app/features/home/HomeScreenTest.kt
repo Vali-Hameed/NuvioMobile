@@ -10,6 +10,12 @@ import com.nuvio.app.features.debrid.DebridProviders
 import com.nuvio.app.features.watchprogress.CachedInProgressItem
 import com.nuvio.app.features.watchprogress.CachedNextUpItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
+import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
+import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesUiState
+import com.nuvio.app.features.watchprogress.ContinueWatchingPriority
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import com.nuvio.app.features.watchprogress.ContinueWatchingSortMode
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressSourceTraktHistory
@@ -926,6 +932,136 @@ class HomeScreenTest {
         assertFalse(hasUsableHomeNextUpMetadata(decision.item))
         assertEquals(HomeNextUpCandidateMetadataOutcome.Dismissed, decision.outcome)
     }
+
+    @Test
+    fun `build continue watching ui state returns Combined when split is disabled`() {
+        val series = progressEntry(videoId = "show:1:2", title = "Show", lastUpdatedEpochMs = 200L).toContinueWatchingItem()
+        val movie = progressEntry(
+            videoId = "movie-1",
+            title = "Movie",
+            lastUpdatedEpochMs = 100L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).toContinueWatchingItem()
+
+        val state = buildContinueWatchingUiState(
+            items = listOf(series, movie),
+            isContinueWatchingSplit = false,
+            continueWatchingPriority = ContinueWatchingPriority.MOVIES_FIRST,
+        )
+
+        assertEquals(ContinueWatchingUiState.Combined(listOf(series, movie)), state)
+    }
+
+    @Test
+    fun `build continue watching ui state splits series and movies and orders rails by priority`() {
+        val series1 = progressEntry(videoId = "show-1:1:2", title = "Show 1", lastUpdatedEpochMs = 300L).toContinueWatchingItem()
+        val movie1 = progressEntry(
+            videoId = "movie-1",
+            title = "Movie 1",
+            lastUpdatedEpochMs = 200L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).toContinueWatchingItem()
+        val nextUpSeries = continueWatchingItem(videoId = "show-2:2:1", subtitle = "S2E1")
+
+        val seriesFirstState = buildContinueWatchingUiState(
+            items = listOf(series1, movie1, nextUpSeries),
+            isContinueWatchingSplit = true,
+            continueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
+        ) as ContinueWatchingUiState.Separate
+
+        assertEquals(listOf(series1, nextUpSeries), seriesFirstState.seriesItems)
+        assertEquals(listOf(movie1), seriesFirstState.movieItems)
+        assertEquals(
+            listOf(ContinueWatchingMediaCategory.SERIES, ContinueWatchingMediaCategory.MOVIES),
+            seriesFirstState.orderedRails.map(ContinueWatchingRail::category),
+        )
+
+        val moviesFirstState = buildContinueWatchingUiState(
+            items = listOf(series1, movie1, nextUpSeries),
+            isContinueWatchingSplit = true,
+            continueWatchingPriority = ContinueWatchingPriority.MOVIES_FIRST,
+        ) as ContinueWatchingUiState.Separate
+
+        assertEquals(
+            listOf(ContinueWatchingMediaCategory.MOVIES, ContinueWatchingMediaCategory.SERIES),
+            moviesFirstState.orderedRails.map(ContinueWatchingRail::category),
+        )
+    }
+
+    @Test
+    fun `separate continue watching ui state omits empty movie or series rails`() {
+        val series = progressEntry(videoId = "show-1:1:2", title = "Show 1", lastUpdatedEpochMs = 300L).toContinueWatchingItem()
+
+        val onlySeriesState = buildContinueWatchingUiState(
+            items = listOf(series),
+            isContinueWatchingSplit = true,
+            continueWatchingPriority = ContinueWatchingPriority.MOVIES_FIRST,
+        ) as ContinueWatchingUiState.Separate
+
+        assertEquals(1, onlySeriesState.orderedRails.size)
+        assertEquals(ContinueWatchingMediaCategory.SERIES, onlySeriesState.orderedRails.single().category)
+        assertEquals(listOf(series), onlySeriesState.orderedRails.single().items)
+    }
+
+    @Test
+    fun `observe continue watching ui state combines watch history and preferences flows`() = runTest {
+        val series = progressEntry(videoId = "show-1:1:2", title = "Show 1", lastUpdatedEpochMs = 300L).toContinueWatchingItem()
+        val movie = progressEntry(
+            videoId = "movie-1",
+            title = "Movie 1",
+            lastUpdatedEpochMs = 200L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).toContinueWatchingItem()
+        val historyFlow = MutableStateFlow(listOf(series, movie))
+        val preferencesFlow = MutableStateFlow(ContinueWatchingPreferencesUiState())
+        val combinedFlow = observeContinueWatchingUiState(
+            watchHistoryFlow = historyFlow,
+            preferencesFlow = preferencesFlow,
+        )
+
+        assertEquals(
+            ContinueWatchingUiState.Combined(listOf(series, movie)),
+            combinedFlow.first(),
+        )
+
+        preferencesFlow.value = ContinueWatchingPreferencesUiState(
+            isContinueWatchingSplit = true,
+            continueWatchingPriority = ContinueWatchingPriority.MOVIES_FIRST,
+        )
+
+        val splitState = combinedFlow.first() as ContinueWatchingUiState.Separate
+        assertEquals(ContinueWatchingPriority.MOVIES_FIRST, splitState.priority)
+        assertEquals(
+            listOf(ContinueWatchingMediaCategory.MOVIES, ContinueWatchingMediaCategory.SERIES),
+            splitState.orderedRails.map(ContinueWatchingRail::category),
+        )
+    }
+
+    @Test
+    fun `continue watching preferences repository persists split and priority settings`() {
+        ContinueWatchingPreferencesRepository.clearLocalState()
+        try {
+            ContinueWatchingPreferencesRepository.setContinueWatchingSplit(true)
+            ContinueWatchingPreferencesRepository.setContinueWatchingPriority(ContinueWatchingPriority.MOVIES_FIRST)
+
+            ContinueWatchingPreferencesRepository.onProfileChanged()
+
+            val loaded = ContinueWatchingPreferencesRepository.uiState.value
+            assertTrue(loaded.isContinueWatchingSplit)
+            assertEquals(ContinueWatchingPriority.MOVIES_FIRST, loaded.continueWatchingPriority)
+        } finally {
+            ContinueWatchingPreferencesRepository.setContinueWatchingSplit(false)
+            ContinueWatchingPreferencesRepository.setContinueWatchingPriority(ContinueWatchingPriority.SERIES_FIRST)
+            ContinueWatchingPreferencesRepository.clearLocalState()
+        }
+    }
+
 
     private fun progressEntry(
         videoId: String,
