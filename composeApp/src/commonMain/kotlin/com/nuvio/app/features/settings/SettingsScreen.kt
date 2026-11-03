@@ -720,6 +720,8 @@ private fun MobileSettingsScreen(
                     sortMode = continueWatchingPreferencesUiState.sortMode,
                     isContinueWatchingSplit = continueWatchingPreferencesUiState.isContinueWatchingSplit,
                     continueWatchingPriority = continueWatchingPreferencesUiState.continueWatchingPriority,
+                    showSeries = continueWatchingPreferencesUiState.showSeries,
+                    showMovies = continueWatchingPreferencesUiState.showMovies,
                 )
                 SettingsPage.PosterCustomization -> posterCustomizationSettingsContent(
                     isTablet = false,
@@ -1123,6 +1125,8 @@ private fun TabletSettingsScreen(
                         sortMode = continueWatchingPreferencesUiState.sortMode,
                     isContinueWatchingSplit = continueWatchingPreferencesUiState.isContinueWatchingSplit,
                     continueWatchingPriority = continueWatchingPreferencesUiState.continueWatchingPriority,
+                    showSeries = continueWatchingPreferencesUiState.showSeries,
+                    showMovies = continueWatchingPreferencesUiState.showMovies,
                     )
                     SettingsPage.PosterCustomization -> posterCustomizationSettingsContent(
                         isTablet = true,

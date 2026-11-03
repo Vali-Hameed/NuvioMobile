@@ -60,6 +60,10 @@ import nuvio.composeapp.generated.resources.settings_continue_watching_section_o
 import nuvio.composeapp.generated.resources.settings_continue_watching_section_sort_order
 import nuvio.composeapp.generated.resources.settings_continue_watching_section_up_next_behavior
 import nuvio.composeapp.generated.resources.settings_continue_watching_section_visibility
+import nuvio.composeapp.generated.resources.settings_continue_watching_show_series_title
+import nuvio.composeapp.generated.resources.settings_continue_watching_show_series_description
+import nuvio.composeapp.generated.resources.settings_continue_watching_show_movies_title
+import nuvio.composeapp.generated.resources.settings_continue_watching_show_movies_description
 import nuvio.composeapp.generated.resources.settings_continue_watching_show_description
 import nuvio.composeapp.generated.resources.settings_continue_watching_show_title
 import nuvio.composeapp.generated.resources.settings_continue_watching_sort_mode_default
@@ -96,6 +100,8 @@ internal fun LazyListScope.continueWatchingSettingsContent(
     sortMode: ContinueWatchingSortMode,
     isContinueWatchingSplit: Boolean = false,
     continueWatchingPriority: ContinueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
+    showSeries: Boolean = true,
+    showMovies: Boolean = true,
 ) {
     item {
         SettingsSection(
@@ -110,6 +116,24 @@ internal fun LazyListScope.continueWatchingSettingsContent(
                     isTablet = isTablet,
                     onCheckedChange = ContinueWatchingPreferencesRepository::setVisible,
                 )
+                if (isVisible) {
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_continue_watching_show_series_title),
+                        description = stringResource(Res.string.settings_continue_watching_show_series_description),
+                        checked = showSeries,
+                        isTablet = isTablet,
+                        onCheckedChange = ContinueWatchingPreferencesRepository::setShowSeries,
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_continue_watching_show_movies_title),
+                        description = stringResource(Res.string.settings_continue_watching_show_movies_description),
+                        checked = showMovies,
+                        isTablet = isTablet,
+                        onCheckedChange = ContinueWatchingPreferencesRepository::setShowMovies,
+                    )
+                }
             }
         }
     }
@@ -205,14 +229,16 @@ internal fun LazyListScope.continueWatchingSettingsContent(
                     isTablet = isTablet,
                     onClick = { showSortModeSheet = true },
                 )
-                SettingsGroupDivider(isTablet = isTablet)
-                ContinueWatchingSplitSettingsContent(
-                    isTablet = isTablet,
-                    isSplit = isContinueWatchingSplit,
-                    priority = continueWatchingPriority,
-                    onSplitChanged = ContinueWatchingPreferencesRepository::setContinueWatchingSplit,
-                    onPrioritySelected = ContinueWatchingPreferencesRepository::setContinueWatchingPriority,
-                )
+                if (showSeries && showMovies) {
+                    SettingsGroupDivider(isTablet = isTablet)
+                    ContinueWatchingSplitSettingsContent(
+                        isTablet = isTablet,
+                        isSplit = isContinueWatchingSplit,
+                        priority = continueWatchingPriority,
+                        onSplitChanged = ContinueWatchingPreferencesRepository::setContinueWatchingSplit,
+                        onPrioritySelected = ContinueWatchingPreferencesRepository::setContinueWatchingPriority,
+                    )
+                }
             }
         }
 

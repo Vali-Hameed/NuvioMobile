@@ -564,9 +564,15 @@ fun HomeScreen(
     val (continueWatchingItems, upcomingItems) = remember(
         shuffledContinueWatchingItems,
         continueWatchingPreferences.sortMode,
+        continueWatchingPreferences.showSeries,
+        continueWatchingPreferences.showMovies,
     ) {
+        val filtered = shuffledContinueWatchingItems.filterContinueWatchingByMediaType(
+            showSeries = continueWatchingPreferences.showSeries,
+            showMovies = continueWatchingPreferences.showMovies,
+        )
         splitUpcomingItems(
-            items = shuffledContinueWatchingItems,
+            items = filtered,
             mode = continueWatchingPreferences.sortMode,
         )
     }
@@ -575,11 +581,15 @@ fun HomeScreen(
         continueWatchingItems,
         continueWatchingPreferences.isContinueWatchingSplit,
         continueWatchingPreferences.continueWatchingPriority,
+        continueWatchingPreferences.showSeries,
+        continueWatchingPreferences.showMovies,
     ) {
         buildContinueWatchingUiState(
             items = continueWatchingItems,
             isContinueWatchingSplit = continueWatchingPreferences.isContinueWatchingSplit,
             continueWatchingPriority = continueWatchingPreferences.continueWatchingPriority,
+            showSeries = continueWatchingPreferences.showSeries,
+            showMovies = continueWatchingPreferences.showMovies,
         )
     }
 
@@ -1291,6 +1301,8 @@ private fun LazyListScope.homeContinueWatchingSections(
         items = continueWatchingItems,
         isContinueWatchingSplit = preferences.isContinueWatchingSplit,
         continueWatchingPriority = preferences.continueWatchingPriority,
+        showSeries = preferences.showSeries,
+        showMovies = preferences.showMovies,
     ),
     upcomingItems: List<ContinueWatchingItem>,
     dataSourceKey: WatchProgressSource,

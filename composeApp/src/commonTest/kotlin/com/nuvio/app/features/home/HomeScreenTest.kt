@@ -1062,6 +1062,120 @@ class HomeScreenTest {
         }
     }
 
+    @Test
+    fun `build continue watching ui state filters out series when showSeries is disabled`() {
+        val series = progressEntry(videoId = "show:1:2", title = "Show", lastUpdatedEpochMs = 200L).toContinueWatchingItem()
+        val movie = progressEntry(
+            videoId = "movie-1",
+            title = "Movie",
+            lastUpdatedEpochMs = 100L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).toContinueWatchingItem()
+
+        val combinedState = buildContinueWatchingUiState(
+            items = listOf(series, movie),
+            isContinueWatchingSplit = false,
+            showSeries = false,
+            showMovies = true,
+        )
+        assertEquals(ContinueWatchingUiState.Combined(listOf(movie)), combinedState)
+
+        val splitState = buildContinueWatchingUiState(
+            items = listOf(series, movie),
+            isContinueWatchingSplit = true,
+            showSeries = false,
+            showMovies = true,
+        ) as ContinueWatchingUiState.Separate
+        assertEquals(emptyList(), splitState.seriesItems)
+        assertEquals(listOf(movie), splitState.movieItems)
+        assertEquals(listOf(ContinueWatchingMediaCategory.MOVIES), splitState.orderedRails.map(ContinueWatchingRail::category))
+    }
+
+    @Test
+    fun `build continue watching ui state filters out movies when showMovies is disabled`() {
+        val series = progressEntry(videoId = "show:1:2", title = "Show", lastUpdatedEpochMs = 200L).toContinueWatchingItem()
+        val movie = progressEntry(
+            videoId = "movie-1",
+            title = "Movie",
+            lastUpdatedEpochMs = 100L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).toContinueWatchingItem()
+
+        val combinedState = buildContinueWatchingUiState(
+            items = listOf(series, movie),
+            isContinueWatchingSplit = false,
+            showSeries = true,
+            showMovies = false,
+        )
+        assertEquals(ContinueWatchingUiState.Combined(listOf(series)), combinedState)
+
+        val splitState = buildContinueWatchingUiState(
+            items = listOf(series, movie),
+            isContinueWatchingSplit = true,
+            showSeries = true,
+            showMovies = false,
+        ) as ContinueWatchingUiState.Separate
+        assertEquals(listOf(series), splitState.seriesItems)
+        assertEquals(emptyList(), splitState.movieItems)
+        assertEquals(listOf(ContinueWatchingMediaCategory.SERIES), splitState.orderedRails.map(ContinueWatchingRail::category))
+    }
+
+    @Test
+    fun `continue watching preferences repository prevents disabling both series and movies simultaneously`() {
+        ContinueWatchingPreferencesRepository.clearLocalState()
+        try {
+            assertTrue(ContinueWatchingPreferencesRepository.uiState.value.showSeries)
+            assertTrue(ContinueWatchingPreferencesRepository.uiState.value.showMovies)
+
+            // Disabling series succeeds because movies is still true
+            ContinueWatchingPreferencesRepository.setShowSeries(false)
+            assertFalse(ContinueWatchingPreferencesRepository.uiState.value.showSeries)
+            assertTrue(ContinueWatchingPreferencesRepository.uiState.value.showMovies)
+
+            // Disabling movies is rejected because series is already false
+            ContinueWatchingPreferencesRepository.setShowMovies(false)
+            assertTrue(ContinueWatchingPreferencesRepository.uiState.value.showMovies)
+
+            // Re-enabling series allows disabling movies
+            ContinueWatchingPreferencesRepository.setShowSeries(true)
+            ContinueWatchingPreferencesRepository.setShowMovies(false)
+            assertTrue(ContinueWatchingPreferencesRepository.uiState.value.showSeries)
+            assertFalse(ContinueWatchingPreferencesRepository.uiState.value.showMovies)
+
+            // And disabling series is now rejected
+            ContinueWatchingPreferencesRepository.setShowSeries(false)
+            assertTrue(ContinueWatchingPreferencesRepository.uiState.value.showSeries)
+        } finally {
+            ContinueWatchingPreferencesRepository.setShowSeries(true)
+            ContinueWatchingPreferencesRepository.setShowMovies(true)
+            ContinueWatchingPreferencesRepository.clearLocalState()
+        }
+    }
+
+    @Test
+    fun `continue watching preferences repository persists showSeries and showMovies settings`() {
+        ContinueWatchingPreferencesRepository.clearLocalState()
+        try {
+            ContinueWatchingPreferencesRepository.setShowSeries(false)
+            ContinueWatchingPreferencesRepository.setShowMovies(true)
+
+            ContinueWatchingPreferencesRepository.onProfileChanged()
+
+            val loaded = ContinueWatchingPreferencesRepository.uiState.value
+            assertFalse(loaded.showSeries)
+            assertTrue(loaded.showMovies)
+        } finally {
+            ContinueWatchingPreferencesRepository.setShowSeries(true)
+            ContinueWatchingPreferencesRepository.setShowMovies(true)
+            ContinueWatchingPreferencesRepository.clearLocalState()
+        }
+    }
+
+
 
     private fun progressEntry(
         videoId: String,

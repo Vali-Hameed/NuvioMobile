@@ -835,6 +835,10 @@
     <string name="settings_continue_watching_section_visibility">VISIBILITY</string>
     <string name="settings_continue_watching_show_description">Display the Continue Watching shelf on the Home screen.</string>
     <string name="settings_continue_watching_show_title">Show Continue Watching</string>
+    <string name="settings_continue_watching_show_series_title">Show TV Shows</string>
+    <string name="settings_continue_watching_show_series_description">Include in-progress TV series and next-up episodes in Continue Watching.</string>
+    <string name="settings_continue_watching_show_movies_title">Show Movies</string>
+    <string name="settings_continue_watching_show_movies_description">Include in-progress movies in Continue Watching.</string>
     <string name="settings_continue_watching_style_card">Card</string>
     <string name="settings_continue_watching_style_card_description">TV-style landscape card</string>
     <string name="settings_continue_watching_style_poster">Poster</string>

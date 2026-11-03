@@ -713,6 +713,16 @@ internal fun settingsSearchEntries(
                 stringResource(Res.string.settings_continue_watching_show_title),
                 stringResource(Res.string.settings_continue_watching_show_description),
             ),
+            PlaybackSearchRow(
+                "show-series-continue-watching",
+                stringResource(Res.string.settings_continue_watching_show_series_title),
+                stringResource(Res.string.settings_continue_watching_show_series_description),
+            ),
+            PlaybackSearchRow(
+                "show-movies-continue-watching",
+                stringResource(Res.string.settings_continue_watching_show_movies_title),
+                stringResource(Res.string.settings_continue_watching_show_movies_description),
+            ),
         ),
     )
     addContinueWatchingRows(

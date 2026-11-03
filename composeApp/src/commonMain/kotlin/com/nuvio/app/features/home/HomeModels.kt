@@ -99,15 +99,32 @@ sealed interface ContinueWatchingUiState {
     }
 }
 
+internal fun List<ContinueWatchingItem>.filterContinueWatchingByMediaType(
+    showSeries: Boolean = true,
+    showMovies: Boolean = true,
+): List<ContinueWatchingItem> {
+    if (showSeries && showMovies) return this
+    if (!showSeries && !showMovies) return emptyList()
+    return filter { item ->
+        if (item.isSeriesContinueWatchingItem()) showSeries else showMovies
+    }
+}
+
 internal fun buildContinueWatchingUiState(
     items: List<ContinueWatchingItem>,
     isContinueWatchingSplit: Boolean,
     continueWatchingPriority: ContinueWatchingPriority = ContinueWatchingPriority.SERIES_FIRST,
+    showSeries: Boolean = true,
+    showMovies: Boolean = true,
 ): ContinueWatchingUiState {
+    val filteredItems = items.filterContinueWatchingByMediaType(
+        showSeries = showSeries,
+        showMovies = showMovies,
+    )
     if (!isContinueWatchingSplit) {
-        return ContinueWatchingUiState.Combined(items = items)
+        return ContinueWatchingUiState.Combined(items = filteredItems)
     }
-    val (seriesItems, movieItems) = items.partition(ContinueWatchingItem::isSeriesContinueWatchingItem)
+    val (seriesItems, movieItems) = filteredItems.partition(ContinueWatchingItem::isSeriesContinueWatchingItem)
     return ContinueWatchingUiState.Separate(
         priority = continueWatchingPriority,
         seriesItems = seriesItems,
@@ -126,6 +143,8 @@ internal fun observeContinueWatchingUiState(
         items = items,
         isContinueWatchingSplit = preferences.isContinueWatchingSplit,
         continueWatchingPriority = preferences.continueWatchingPriority,
+        showSeries = preferences.showSeries,
+        showMovies = preferences.showMovies,
     )
 }
 

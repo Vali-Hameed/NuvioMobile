@@ -12,6 +12,10 @@ import kotlinx.serialization.json.Json
 @Serializable
 private data class StoredContinueWatchingPreferences(
     val isVisible: Boolean = true,
+    @SerialName("show_series_in_cw")
+    val showSeries: Boolean = true,
+    @SerialName("show_movies_in_cw")
+    val showMovies: Boolean = true,
     val style: ContinueWatchingSectionStyle = ContinueWatchingSectionStyle.Card,
     val upNextFromFurthestEpisode: Boolean = true,
     @SerialName("use_episode_thumbnails_in_cw")
@@ -65,10 +69,16 @@ object ContinueWatchingPreferencesRepository {
         dismissedNextUpKeys: Set<String>,
         isContinueWatchingSplit: Boolean = _uiState.value.isContinueWatchingSplit,
         continueWatchingPriority: ContinueWatchingPriority = _uiState.value.continueWatchingPriority,
+        showSeries: Boolean = _uiState.value.showSeries,
+        showMovies: Boolean = _uiState.value.showMovies,
     ) {
         ensureLoaded()
+        val normalizedSeries = if (!showSeries && !showMovies) true else showSeries
+        val normalizedMovies = if (!showSeries && !showMovies) true else showMovies
         _uiState.value = _uiState.value.copy(
             isVisible = isVisible,
+            showSeries = normalizedSeries,
+            showMovies = normalizedMovies,
             style = style,
             upNextFromFurthestEpisode = upNextFromFurthestEpisode,
             useEpisodeThumbnails = useEpisodeThumbnails,
@@ -97,9 +107,18 @@ object ContinueWatchingPreferencesRepository {
             json.decodeFromString<StoredContinueWatchingPreferences>(payload)
         }.getOrNull()
 
+        val (finalSeries, finalMovies) = if (stored != null && !stored.showSeries && !stored.showMovies) {
+            true to true
+        } else if (stored != null) {
+            stored.showSeries to stored.showMovies
+        } else {
+            true to true
+        }
         _uiState.value = if (stored != null) {
             ContinueWatchingPreferencesUiState(
                 isVisible = stored.isVisible,
+                showSeries = finalSeries,
+                showMovies = finalMovies,
                 style = stored.style,
                 upNextFromFurthestEpisode = stored.upNextFromFurthestEpisode,
                 useEpisodeThumbnails = stored.useEpisodeThumbnails,
@@ -119,6 +138,22 @@ object ContinueWatchingPreferencesRepository {
     fun setVisible(isVisible: Boolean) {
         ensureLoaded()
         _uiState.value = _uiState.value.copy(isVisible = isVisible)
+        persist()
+    }
+
+    fun setShowSeries(enabled: Boolean) {
+        ensureLoaded()
+        if (!enabled && !_uiState.value.showMovies) return
+        if (_uiState.value.showSeries == enabled) return
+        _uiState.value = _uiState.value.copy(showSeries = enabled)
+        persist()
+    }
+
+    fun setShowMovies(enabled: Boolean) {
+        ensureLoaded()
+        if (!enabled && !_uiState.value.showSeries) return
+        if (_uiState.value.showMovies == enabled) return
+        _uiState.value = _uiState.value.copy(showMovies = enabled)
         persist()
     }
 
@@ -207,6 +242,8 @@ object ContinueWatchingPreferencesRepository {
             json.encodeToString(
                 StoredContinueWatchingPreferences(
                     isVisible = _uiState.value.isVisible,
+                    showSeries = _uiState.value.showSeries,
+                    showMovies = _uiState.value.showMovies,
                     style = _uiState.value.style,
                     upNextFromFurthestEpisode = _uiState.value.upNextFromFurthestEpisode,
                     useEpisodeThumbnails = _uiState.value.useEpisodeThumbnails,

@@ -138,6 +138,8 @@ fun ContinueWatchingSettingsScreen(
             sortMode = continueWatchingPreferencesUiState.sortMode,
             isContinueWatchingSplit = continueWatchingPreferencesUiState.isContinueWatchingSplit,
             continueWatchingPriority = continueWatchingPreferencesUiState.continueWatchingPriority,
+            showSeries = continueWatchingPreferencesUiState.showSeries,
+            showMovies = continueWatchingPreferencesUiState.showMovies,
         )
     }
 }

@@ -247,6 +247,8 @@ internal fun ContinueWatchingItem.isSeriesContinueWatchingItem(): Boolean =
 
 data class ContinueWatchingPreferencesUiState(
     val isVisible: Boolean = true,
+    val showSeries: Boolean = true,
+    val showMovies: Boolean = true,
     val style: ContinueWatchingSectionStyle = ContinueWatchingSectionStyle.Card,
     val upNextFromFurthestEpisode: Boolean = true,
     val useEpisodeThumbnails: Boolean = true,
